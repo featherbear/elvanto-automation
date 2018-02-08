@@ -1,6 +1,7 @@
 from modules.__stub__ import ModuleStub
 from ElvantoAPIExtensions import Enums, Helpers
 import yagmail
+import os
 
 class Module(ModuleStub):
     __VERSION__ = "1.0"
@@ -13,7 +14,8 @@ class Module(ModuleStub):
             "password": ""
         },
         "general": {
-            "serviceName": ""
+            "serviceName": "",
+            "template": ""
         },
 
         "responsibilities":
@@ -25,12 +27,29 @@ class Module(ModuleStub):
             }
 
     }
+    def validate(self):
+        _templateFile = os.path.join("files", self.__NAME__, self.settings["general"]["template"])
+        if os.path.isdir(_templateFile) or not os.path.exists(_templateFile):
+            raise self.ModuleException("Invalid template file path")
+        self._templateFile = _templateFile
+
     def run(self):
-        print(self.settings)
-        print(self.conn.people)
-        services = Helpers.ParseServices(Helpers.ServicesOnDate(self.conn, Helpers.NextDate(Enums.Days.SUNDAY), ["volunteers"]))
+        _serviceDate = Helpers.NextDate(Enums.Days.SUNDAY)
+        services = Helpers.ParseServices(Helpers.ServicesOnDate(self.conn, _serviceDate, ["volunteers"]))
         service = next(filter(lambda _: _["name"] == self.settings["general"]["serviceName"], services))
-        volunteerMap = {}
+        volunteerMap = {
+            "serviceLeader": "",
+            "speaker": "",
+            "bibleReader": "",
+            "visual": "",
+            "audio": "",
+            "welcoming": "",
+            "music": "",
+
+            "prayer": "",
+            "cleaning": "",
+        }
+
         for position in service["volunteers"]:
 
             if position["position_name"] == "Service leader": volunteerMap["serviceLeader"] = position["volunteers"].keys()
@@ -43,42 +62,47 @@ class Module(ModuleStub):
 
         _volunteerMapResolve = {}
         for position in volunteerMap:
-            _volunteerMapResolve[position] = map(lambda _: self.conn.findContact(id=_)[0], volunteerMap[position])
+            _volunteerMapResolve[position] = list(map(lambda _: self.conn.findContact(id=_)[0], volunteerMap[position]))
 
         _volunteerMapName = {}
+        _volunteerMapEmail = {}
+
         _volunteerMapNameJoin = {}
+        _volunteerMapEmailJoin = []
         for position in _volunteerMapResolve:
             nameArray = ["%s %s" % (volunteer["first_name"], volunteer["last_name"]) for volunteer in _volunteerMapResolve[position]]
             _volunteerMapName[position] = nameArray
             _volunteerMapNameJoin[position] = ", ".join(nameArray)
 
-        _volunteerMapEmail = {}
-        _volunteerMapEmailJoin = []
-        for position in _volunteerMapResolve:
             emailArray = [volunteer["email"] for volunteer in _volunteerMapResolve[position]]
             _volunteerMapEmail[position] = emailArray
             _volunteerMapEmailJoin.extend(emailArray)
-        _volunteerMapEmailJoin = ",".join(_volunteerMapEmailJoin)
 
+        replacements = {
+            "serviceLeader": _volunteerMapNameJoin["serviceLeader"],
+            "speaker": _volunteerMapNameJoin["speaker"],
+            "prayer": _volunteerMapNameJoin["prayer"],
 
-        bo = "<b>"
-        bc = "</b>"
-        nl = "<br>"
+            "bibleReader": _volunteerMapNameJoin["bibleReader"],
+            "welcoming": _volunteerMapNameJoin["welcoming"],
 
-        body = ""
-        body += "Morning Friends!" + nl + nl + "Below is the roster for this week's worship service. You should get an email later this week detailing the exact runsheet, if you have any further questions about what's happening, get in touch with this week's service leader, " + _volunteerMapNameJoin["serviceLeader"] + "." + nl + nl
-        # body += bo + "Passage:" + bc + " " + volunteerMap.sermonPassage + " - " + volunteerMap.sermonPassageReader + nl + nl
-        body += bo + "Speaker:" + bc + " " + _volunteerMapNameJoin["speaker"] + nl + nl
-        body += bo + "Service Leader:" + bc + " " + _volunteerMapNameJoin["serviceLeader"] + nl + nl
-        # body += bo + "Pastoral Prayer:" + bc + " " + volunteerMap.prayer + nl + nl
-        body += bo + "Welcoming:" + bc + " " + _volunteerMapNameJoin["welcoming"] + nl + nl
-        body += bo + "Music:" + bc + " " + _volunteerMapNameJoin["music"] + nl + nl
-        body += bo + "Audio:" + bc + " " + _volunteerMapNameJoin["audio"] + nl + nl
-        body += bo + "Visual:" + bc + " " + _volunteerMapNameJoin["visual"] + nl + nl
-        # body += bo + "Church Cleaning:" + bc + " " + data.cleaning + nl + nl
-        body += "<b>NOTE</b>: If you are not able to serve this week please find a replacement for yourself, or get in touch directly with your team leader. Thanks!<br><br><b>Counters</b><br>-  Please give <b>metrics data sheet</b> and all completed <b>newcomer cards</b> (back of bulletin) to <b>" + self.settings["responsibilities"]["metrics"] + "</b>.<br>- Please give offertory money for banking to <b>" + self.settings["responsibilities"]["offertory"] + "</b><br><br><br><br><i><b>This is an automated email - if there are issues please get in touch with " + self.settings["responsibilities"]["roster"] + ".</b></i>"
+            "music": _volunteerMapNameJoin["music"],
+            "audio": _volunteerMapNameJoin["audio"],
+            "visual": _volunteerMapNameJoin["visual"],
 
-        print(body)
+            "cleaning": _volunteerMapNameJoin["cleaning"],
+
+            "Dmmyyyy": _serviceDate.strftime("%A, %#d %B %Y"),
+
+            "metrics": self.settings["responsibilities"]["metrics"],
+            "offertory": self.settings["responsibilities"]["offertory"],
+            "roster": self.settings["responsibilities"]["roster"]
+        }
+
+        with open(self._templateFile, "r") as template:
+            body = template.read()
+        for key in replacements:
+            body = body.replace("{" + key + "}",replacements[key])
 
         smtpDetails = {
             "user": self.settings["email"]["username"],
@@ -87,5 +111,6 @@ class Module(ModuleStub):
             "port": 465,
             "smtp_ssl": True,
         }
-        # self.mail = yagmail.SMTP(**smtpDetails)
-        # self.mail.send(to=_volunteerMapEmailJoin, cc=self.settings["responsibilities"]["adminEmail"], subject='emailPrefix + "Worship Team " + data.dateDMMYYYY', contents=body)
+
+        self.mail = yagmail.SMTP(**smtpDetails)
+        self.mail.send(to=_volunteerMapEmailJoin, cc=self.settings["responsibilities"]["adminEmail"], subject=self.settings["general"]["serviceName"] + " Worship Team | " + _serviceDate.strftime("%D"), contents=[yagmail.raw(body)])
