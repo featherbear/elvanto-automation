@@ -4,6 +4,8 @@ Elvanto automation tools for [South-West Evangelical Church](https://swec.org.au
 ### Attribution
  * [Elvanto API Extensions](https://github.com/featherbear/python-Elvanto-API-Extensions)
  * [ElvantoAPI](https://github.com/elvanto/api-py) `version 1.4.1`
+ * [yagmail](https://github.com/kootenpv/yagmail) `version 0.10.212`
+ 
 ## License
 Copyright © 2018 Andrew Wong  
 
