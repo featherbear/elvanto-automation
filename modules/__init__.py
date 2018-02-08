@@ -1,4 +1,5 @@
 modules = {}
+from . import __stub__
 def __init__():
     import importlib
     import pkgutil
