@@ -105,13 +105,13 @@ class Module(ModuleStub):
         for key in replacements:
             body = body.replace("{" + key + "}",replacements[key])
 
-        customSMTPServer = False if self.settings["email"]["provider"].lower() == "gmail" else self.settings["email"]["provider"].split(":")[:-2]
+        customSMTPServer = False if self.settings["email"]["provider"].lower() == "gmail" else self.settings["email"]["provider"].split(":")[-2:] + [465] # Add default SSL port if the user does not add
         smtpDetails = {
             "user": self.settings["email"]["username"],
             "password": self.settings["email"]["password"],
             "host": customSMTPServer[0] if customSMTPServer else "smtp.gmail.com",
             "port": int(customSMTPServer[1]) if customSMTPServer else 465,
-            "smtp_ssl": self.settings["email"]["ssl"].lower() == "true",
+            "smtp_ssl": (self.settings["email"]["ssl"].lower() == "true") if customSMTPServer else True,
         }
 
         self.mail = yagmail.SMTP(**smtpDetails)
