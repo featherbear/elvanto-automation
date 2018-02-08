@@ -4,14 +4,15 @@ import yagmail
 import os
 
 class Module(ModuleStub):
-    __VERSION__ = "1.0"
+    __VERSION__ = "1.1"
     __NAME__ = "rosterEmail"
 
     settings = {
         "email": {
             "provider": "gmail",
             "username": "",
-            "password": ""
+            "password": "",
+            "ssl": ""
         },
         "general": {
             "serviceName": "",
@@ -104,12 +105,13 @@ class Module(ModuleStub):
         for key in replacements:
             body = body.replace("{" + key + "}",replacements[key])
 
+        customSMTPServer = False if self.settings["email"]["provider"].lower() == "gmail" else self.settings["email"]["provider"].split(":")[:-2]
         smtpDetails = {
             "user": self.settings["email"]["username"],
             "password": self.settings["email"]["password"],
-            "host": "smtp.gmail.com",
-            "port": 465,
-            "smtp_ssl": True,
+            "host": customSMTPServer[0] if customSMTPServer else "smtp.gmail.com",
+            "port": int(customSMTPServer[1]) if customSMTPServer else 465,
+            "smtp_ssl": self.settings["email"]["ssl"].lower() == "true",
         }
 
         self.mail = yagmail.SMTP(**smtpDetails)
