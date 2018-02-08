@@ -29,12 +29,11 @@ class ModuleStub():
 
         for section in self.settings:
             for key in self.settings[section]:
-                val = _config.get(section, key)
-                if not val: raise self.ModuleException("Empty setting for " + section + "." + key)
+                val = _config.get(section, key, fallback = None)
                 self.settings[section][key] = val
+
         self.validate()
         self.conn = connectionObj
-
 
     def validate(self):
         # stub
