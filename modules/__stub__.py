@@ -7,6 +7,9 @@ class ModuleStub():
     __VERSION__ = ""
     __NAME__ = ""
 
+    __executeTime__ = None
+    __executeDay__ = None
+
     settings = {
     }
     def __init__(self, connectionObj: ElvantoAPI.Connection):
@@ -22,7 +25,8 @@ class ModuleStub():
                     _config.set(section, key, self.settings[section][key])
             with open(_configFilePath, "w") as _configFile:
                 _config.write(_configFile)
-            raise self.ModuleException("Created '%s'. Please enter in your API key to continue. Exiting" % _configFilePath)
+            os.mkdir(os.path.join("files", self.__NAME__))
+            raise self.ModuleException("Created '%s'. Please enter in the necessary options and settings in this file. Exiting" % _configFilePath)
         elif not os.path.isfile(_configFilePath):
             raise self.ModuleException(_configFilePath + " is not a file! Aborting")
         _config.read(_configFilePath)
