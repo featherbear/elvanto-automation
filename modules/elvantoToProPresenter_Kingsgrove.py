@@ -10,7 +10,8 @@ class Module(ModuleStub):
         "general": {
             "api_key": "",
             "locationID": "",
-            "folderName": ""
+            "folderName": "",
+            "serviceName": "",
         },
 
     }
@@ -21,11 +22,14 @@ class Module(ModuleStub):
 
     def run(self):
         _serviceDate = Helpers.NextDate(Enums.Days.SUNDAY)
+
         import math
         weekNumber = math.ceil(_serviceDate.day / 7)
         try:
-            services = self.conn.servicesOnDate(_serviceDate, locationID=self.settings["general"]["locationID"],
-                                                fields=["plans"])
+            services = self.conn.servicesOnDate(_serviceDate, locationID = self.settings["general"]["locationID"],
+                                                fields = ["plans"])
+            services = filter(lambda _: _.name == self.settings["general"]["serviceName"], services)
+            print(services)
 
         except Exception as e:
             if e.__class__.__name__ == "ConnectionError":
@@ -57,20 +61,22 @@ class Module(ModuleStub):
                             # add countdown + auto cue
 
                         elif item.title == "Sermon":
-                            playlist.add.document(os.path.join(propresenter.documentPath, "Sermon Passage Slide" + ".pro6"))
+                            playlist.add.document(
+                                os.path.join(propresenter.documentPath, "Sermon Passage Slide.pro6"))
                     elif type == "song":
                         playlist.add.document(item.description if os.path.exists(item.description) else os.path.join(
                             propresenter.documentPath, item.title + ".pro6"))
                     else:
-                        print(item.title)
+                        # print(item.title)
                         if item.title == "Confession":
                             # weekNumber will only ever be 1, 2, 3, 4 or 5
                             print("Insert confession", weekNumber)
-                            playlist.add.document(os.path.join(propresenter.documentPath, "Confession " + str(weekNumber) + ".pro6"))
+                            playlist.add.document(
+                                os.path.join(propresenter.documentPath, "Confession " + str(weekNumber) + ".pro6"))
                         # print("Skipping item with type:", type)
                 # Add announcements roll
                 playlist.add.document(os.path.join(propresenter.documentPath, "Announcements" + ".pro6"))
             else:
-                print("Skipping", service,
-                      "because it already exists in ProPresenter!\nTo create a new playlist for this service, please manually delete it in ProPresenter")
+                print("    Skipping", service,
+                      "because it already exists!\n      To create a new playlist for this service, please manually delete it in ProPresenter")
         propresenter.playlist.save()
