@@ -8,9 +8,9 @@ from modules.__stub__ import ModuleStub
 
 class Module(ModuleStub):
     __VERSION__ = "1.1"
-    __NAME__ = "rosterEmail"
-    # __executeTime__ = "10:00"
-    # __executeDay__ = "tuesday"
+    __NAME__ = "rosterEmail_Kingsgrove"
+    __executeTime__ = "10:00"
+    __executeDay__ = "tuesday"
 
     settings = {
         "email": {
@@ -159,10 +159,18 @@ class Module(ModuleStub):
         }
 
         mailer = yagmail.SMTP(**smtpDetails)
-        mailer.send(to=_volunteerMapEmailJoin,
-                    cc=self.settings["responsibilities"]["adminEmail"],
-                    subject=self.settings["general"]["serviceName"] + " Worship Team | " + _serviceDate.strftime("%D"),
-                    contents=[yagmail.raw(body)],
-                    headers={
+        # mailer.send(to=_volunteerMapEmailJoin,
+        #             cc=self.settings["responsibilities"]["adminEmail"],
+        #             subject=self.settings["general"]["serviceName"] + " Worship Team | " + _serviceDate.strftime("%D"),
+        #             contents=[yagmail.raw(body)],
+        #             headers={
+        #                 "Reply-To": self.settings["responsibilities"]["adminEmail"]
+        #             })
+        mailer.send(to = "andrew.j.wong@outlook.com",
+                    # cc=self.settings["responsibilities"]["adminEmail"],
+                    subject = "PRODUCTION TEST | " + self.settings["general"][
+                        "serviceName"] + " Worship Team | " + _serviceDate.strftime("%D"),
+                    contents = [yagmail.raw(body)],
+                    headers = {
                         "Reply-To": self.settings["responsibilities"]["adminEmail"]
                     })

@@ -8,6 +8,8 @@ from modules.__stub__ import ModuleStub
 class Module(ModuleStub):
     __VERSION__ = "1.0"
     __NAME__ = "bulletinGenerator_Kingsgrove"
+    __executeTime__ = "16:00"
+    __executeDay__ = "thursday"
 
     settings = {
         "general": {
