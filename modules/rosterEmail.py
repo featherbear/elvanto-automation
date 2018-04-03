@@ -1,11 +1,16 @@
-from modules.__stub__ import ModuleStub
-from ElvantoAPIExtensions import Enums, Helpers
-import yagmail
 import os
+
+import yagmail
+
+from ElvantoAPIExtensions import Enums, Helpers
+from modules.__stub__ import ModuleStub
+
 
 class Module(ModuleStub):
     __VERSION__ = "1.1"
     __NAME__ = "rosterEmail"
+    # __executeTime__ = "10:00"
+    # __executeDay__ = "tuesday"
 
     settings = {
         "email": {
@@ -28,6 +33,7 @@ class Module(ModuleStub):
             }
 
     }
+
     def validate(self):
         _templateFile = os.path.join("files", self.__NAME__, self.settings["general"]["template"])
         if os.path.isdir(_templateFile) or not os.path.exists(_templateFile):
@@ -36,8 +42,8 @@ class Module(ModuleStub):
 
     def run(self):
         _serviceDate = Helpers.NextDate(Enums.Days.SUNDAY)
-        services = Helpers.ParseServices(Helpers.ServicesOnDate(self.conn, _serviceDate, ["volunteers"]))
-        service = next(filter(lambda _: _["name"] == self.settings["general"]["serviceName"], services))
+        services = Helpers.ServicesOnDate(self.conn, _serviceDate, ["volunteers"])
+        service = next(filter(lambda _: _.name == self.settings["general"]["serviceName"], services))
         volunteerMap = {
             "serviceLeader": "",
             "speaker": "",
@@ -49,21 +55,52 @@ class Module(ModuleStub):
 
             "prayer": "",
             "cleaning": "",
+            "counters": ""
         }
 
-        for position in service["volunteers"]:
+        query = service.volunteers.byPositionName("Service leader")
+        if query:
+            volunteerMap["serviceLeader"] = query
 
-            if position["position_name"] == "Service leader": volunteerMap["serviceLeader"] = position["volunteers"].keys()
-            elif position["position_name"] == "Speaker": volunteerMap["speaker"] = position["volunteers"].keys()
-            elif position["position_name"] == "Bible reader": volunteerMap["bibleReader"] = position["volunteers"].keys()
-            elif position["position_name"] == "ProPresenter": volunteerMap["visual"] = position["volunteers"].keys()
-            elif position["position_name"] == "Sound Desk": volunteerMap["audio"] = position["volunteers"].keys()
-            elif position["position_name"] == "Welcomers": volunteerMap["welcoming"] = position["volunteers"].keys()
-            elif position["position_name"] == "Worship Leader": volunteerMap["music"] = position["volunteers"].keys()
+        query = service.volunteers.byPositionName("Congregational prayer")
+        if query:
+            volunteerMap["prayer"] = query
+
+        query = service.volunteers.byPositionName("Speaker")
+        if query:
+            volunteerMap["speaker"] = query
+
+        query = service.volunteers.byPositionName("Bible reader")
+        if query:
+            volunteerMap["bibleReader"] = query
+
+        query = service.volunteers.byPositionName("ProPresenter")
+        if query:
+            volunteerMap["visual"] = query
+
+        query = service.volunteers.byPositionName("Sound Desk")
+        if query:
+            volunteerMap["audio"] = query
+
+        query = service.volunteers.byPositionName("Welcomers")
+        if query:
+            volunteerMap["welcoming"] = query
+
+        query = service.volunteers.byPositionName("Worship Leader")
+        if query:
+            volunteerMap["music"] = query
+
+        query = service.volunteers.byPositionName("Church lockup")
+        if query:
+            volunteerMap["cleaning"] = query
+
+        query = service.volunteers.byPositionName("Offertory counting")
+        if query:
+            volunteerMap["counters"] = query
 
         _volunteerMapResolve = {}
-        for position in volunteerMap:
-            _volunteerMapResolve[position] = list(map(lambda _: self.conn.findContact(id=_)[0], volunteerMap[position]))
+        for key, val in volunteerMap.items():
+            _volunteerMapResolve[key] = list(map(lambda _: self.conn.findContact(id = _.id)[0], val))
 
         _volunteerMapName = {}
         _volunteerMapEmail = {}
@@ -71,7 +108,8 @@ class Module(ModuleStub):
         _volunteerMapNameJoin = {}
         _volunteerMapEmailJoin = []
         for position in _volunteerMapResolve:
-            nameArray = ["%s %s" % (volunteer["first_name"], volunteer["last_name"]) for volunteer in _volunteerMapResolve[position]]
+            nameArray = ["%s %s" % (volunteer["first_name"], volunteer["last_name"]) for volunteer in
+                         _volunteerMapResolve[position]]
             _volunteerMapName[position] = nameArray
             _volunteerMapNameJoin[position] = ", ".join(nameArray)
 
@@ -92,20 +130,26 @@ class Module(ModuleStub):
             "visual": _volunteerMapNameJoin["visual"],
 
             "cleaning": _volunteerMapNameJoin["cleaning"],
+            "counters": _volunteerMapNameJoin["counters"],
 
             "Dmmyyyy": _serviceDate.strftime("%A, %#d %B %Y"),
 
-            "metrics": self.settings["responsibilities"]["metrics"],
-            "offertory": self.settings["responsibilities"]["offertory"],
-            "roster": self.settings["responsibilities"]["roster"]
+            "metricsAdmin": self.settings["responsibilities"]["metrics"],
+            "offertoryAdmin": self.settings["responsibilities"]["offertory"],
+            "rosterAdmin": self.settings["responsibilities"]["roster"]
         }
 
         with open(self._templateFile, "r") as template:
             body = template.read()
         for key in replacements:
-            body = body.replace("{" + key + "}",replacements[key])
+            body = body.replace("{" + key + "}", replacements[key])
 
-        customSMTPServer = False if self.settings["email"]["provider"].lower() == "gmail" else self.settings["email"]["provider"].split(":")[-2:] + [465] # Add default SSL port if the user does not add
+        if self.settings["email"]["provider"].lower() == "gmail":
+            customSMTPServer = False
+        else:
+            customSMTPServer = self.settings["email"]["provider"].split(":")[-2:] + [465]
+            # Add default SSL port if the user does not add
+
         smtpDetails = {
             "user": self.settings["email"]["username"],
             "password": self.settings["email"]["password"],
@@ -114,5 +158,11 @@ class Module(ModuleStub):
             "smtp_ssl": (self.settings["email"]["ssl"].lower() == "true") if customSMTPServer else True,
         }
 
-        self.mail = yagmail.SMTP(**smtpDetails)
-        self.mail.send(to=_volunteerMapEmailJoin, cc=self.settings["responsibilities"]["adminEmail"], subject=self.settings["general"]["serviceName"] + " Worship Team | " + _serviceDate.strftime("%D"), contents=[yagmail.raw(body)])
+        mailer = yagmail.SMTP(**smtpDetails)
+        mailer.send(to=_volunteerMapEmailJoin,
+                    cc=self.settings["responsibilities"]["adminEmail"],
+                    subject=self.settings["general"]["serviceName"] + " Worship Team | " + _serviceDate.strftime("%D"),
+                    contents=[yagmail.raw(body)],
+                    headers={
+                        "Reply-To": self.settings["responsibilities"]["adminEmail"]
+                    })
