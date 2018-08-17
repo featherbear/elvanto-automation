@@ -4,9 +4,10 @@ import os.path
 from ElvantoAPIExtensions import Enums, Helpers
 from modules.__stub__ import ModuleStub
 
+
 class Module(ModuleStub):
     __VERSION__ = "1.0"
-    __NAME__ = "bulletinGenerator_Kingsgrove"
+    __NAME__ = "bulletinGenerator_Bankstown"
     # __executeTime__ = "16:00"
     # __executeDay__ = "thursday"
 
@@ -136,8 +137,7 @@ class Module(ModuleStub):
             replacements["scripturePassage"] = re.sub('<.*?>', "", scripturePassageItem.description).strip()
         # Details in the title
 
-
-        sermonPassageItem = next(filter(lambda _: _.title.startswith("Bible Reading (Sermon"), thisWeekService.plan))
+        sermonPassageItem = next(filter(lambda _: _.title.startswith("Bible Reading (Sermon)"), thisWeekService.plan))
         replacements["sermonPassage"] = re.sub('<.*?>', "", sermonPassageItem.description).strip()
 
         replacements["speaker"] = stringify(thisWeekService.volunteers.byPositionName("Speaker"))
